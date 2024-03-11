@@ -76,15 +76,18 @@ export const createPayload = async (
 
   const transactionData = {
     nonce,
-    gasLimit: 1000000,
-    maxFeePerGas: maxFeePerGas,
-    maxPriorityFeePerGas: maxPriorityFeePerGas,
     to: receiver,
     value: BigInt(web3.utils.toWei(amount, "ether")),
     data: data || "0x",
   };
-
   console.log(transactionData);
+  const estimatedGas = await provider.estimateGas(transactionData);
+
+  console.log(`Using gas estimate of at ${estimatedGas} GWei`);
+  // TODO - fix the types here.
+  transactionData.gasLimit = BigInt(estimatedGas.toString());
+  transactionData.maxFeePerGas = maxFeePerGas;
+  transactionData.maxPriorityFeePerGas = maxPriorityFeePerGas;
 
   const transaction = FeeMarketEIP1559Transaction.fromTxData(transactionData, {
     common,
@@ -124,7 +127,8 @@ export const relayTransaction = async (
 ) => {
   const serializedTx = bytesToHex(signedTransaction.serialize());
   const relayed = await web3.eth.sendSignedTransaction(serializedTx);
-  return relayed.transactionHash;
+  console.log("Sent tx with hash:", relayed.transactionHash);
+  return relayed.transactionHash;  
 };
 
 export const requestSignature = async (payload: number[], path: string) => {
@@ -172,6 +176,7 @@ export const signAndSendTransaction = async (
     path: string;
   }
 ) => {
+  console.log("Create Paylod for", sender);
   const { transaction, payload } = await createPayload(
     sender,
     receiver,
@@ -185,6 +190,6 @@ export const signAndSendTransaction = async (
   );
 
   const signature = reconstructSignature(transaction, big_r, big_s, sender);
-
+  console.log("Relaying signed tx:", JSON.stringify(transaction));
   await relayTransaction(signature);
 };
